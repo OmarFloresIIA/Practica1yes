@@ -1,11 +1,732 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hola Mundo</title>
+    <title>elspd | Minecraft World</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for 3D Minecraft Scene -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts: Press Start 2P & Pixelify Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Pixelify Sans', cursive, sans-serif;
+            overflow-x: hidden;
+            background-color: #1a1a2e;
+            user-select: none;
+        }
+
+        .font-pixel-header {
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        /* Minecraft Pixelated Glow Filter */
+        .text-glow {
+            text-shadow: 0 0 10px rgba(59, 230, 0, 0.8),
+                         0 0 20px rgba(59, 230, 0, 0.5),
+                         4px 4px 0px #000;
+        }
+
+        .text-stroke {
+            -webkit-text-stroke: 2px #000;
+        }
+
+        /* Minecraft Button Styling */
+        .mc-button {
+            background: linear-gradient(180deg, #707070 0%, #4a4a4a 100%);
+            border: 4px solid #000;
+            box-shadow: inset -4px -4px 0px 0px #222222, inset 4px 4px 0px 0px #b0b0b0;
+            transition: all 0.1s ease;
+        }
+
+        .mc-button:hover {
+            background: linear-gradient(180deg, #858585 0%, #5e5e5e 100%);
+            transform: translateY(-2px);
+        }
+
+        .mc-button:active {
+            box-shadow: inset 4px 4px 0px 0px #222222, inset -4px -4px 0px 0px #b0b0b0;
+            transform: translateY(2px);
+        }
+
+        .mc-button-green {
+            background: linear-gradient(180deg, #5bb327 0%, #3a7518 100%);
+            box-shadow: inset -4px -4px 0px 0px #1e3e0c, inset 4px 4px 0px 0px #8be053;
+        }
+
+        .mc-button-green:hover {
+            background: linear-gradient(180deg, #6bc433 0%, #478c1f 100%);
+        }
+
+        /* Glassmorphism Card with Minecraft border */
+        .mc-glass-card {
+            background: rgba(18, 25, 12, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 4px solid #3b8216;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(85, 255, 0, 0.15);
+        }
+
+        /* Canvas background overlay */
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: auto;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b8216;
+            border: 2px solid #000;
+        }
+
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        .animate-bounce-slow {
+            animation: bounce-slow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(85, 255, 0, 0.8)); }
+            50% { filter: drop-shadow(0 0 20px rgba(85, 255, 0, 1)); }
+        }
+
+        .glow-effect {
+            animation: pulse-glow 3s infinite ease-in-out;
+        }
+    </style>
 </head>
-<body>
-    <h1>¡Hola, mundo!</h1>
+<body class="h-full text-white bg-slate-950 flex flex-col justify-between relative overflow-x-hidden">
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 flex flex-col min-h-screen justify-between p-4 sm:p-6 md:p-8 pointer-events-none">
+        
+        <!-- Header / Navigation bar -->
+        <header class="w-full max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-4 pointer-events-auto">
+            <div class="flex items-center gap-3 bg-black/60 px-4 py-2 rounded-lg border-2 border-green-500/50 backdrop-blur-md">
+                <div class="w-8 h-8 rounded bg-green-600 flex items-center justify-center border-2 border-black font-pixel-header text-sm font-bold text-yellow-300">
+                    E
+                </div>
+                <span class="font-pixel-header text-xs sm:text-sm text-green-400 tracking-wider">elspd.craft</span>
+            </div>
+
+            <!-- Audio & Interactive Toggle Controls -->
+            <div class="flex items-center gap-3">
+                <button id="tralalero-btn" class="mc-button mc-button-green px-4 py-2.5 rounded text-white font-pixel-header text-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95 shadow-lg">
+                    <i class="fa-solid fa-music text-yellow-300 animate-spin-slow"></i>
+                    <span id="tralalero-text">¡TRALALERO TRALALA!</span>
+                </button>
+                <button id="camera-btn" title="Cambiar Vista de Cámara" class="mc-button px-3 py-2 rounded text-white font-pixel-header text-xs flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-camera"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="w-full max-w-4xl mx-auto my-auto py-8 px-2 flex flex-col items-center text-center pointer-events-auto">
+            
+            <!-- Main Floating Glass Card -->
+            <div class="mc-glass-card rounded-2xl p-6 sm:p-10 w-full relative overflow-hidden backdrop-blur-xl">
+                <!-- Decorative Corner Blocks -->
+                <div class="absolute -top-3 -left-3 w-6 h-6 bg-green-500 border-2 border-black"></div>
+                <div class="absolute -top-3 -right-3 w-6 h-6 bg-green-500 border-2 border-black"></div>
+                <div class="absolute -bottom-3 -left-3 w-6 h-6 bg-green-500 border-2 border-black"></div>
+                <div class="absolute -bottom-3 -right-3 w-6 h-6 bg-green-500 border-2 border-black"></div>
+
+                <!-- Subtitle Badge -->
+                <div class="inline-block bg-green-900/80 border border-green-400 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold tracking-widest text-green-300 uppercase mb-4 shadow-inner">
+                    ⚡ Official Gamer Portfolio ⚡
+                </div>
+
+                <!-- MAIN TITLE: HOLA SOY ELSPD -->
+                <h1 class="font-pixel-header text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-green-400 to-emerald-300 tracking-tight leading-tight mb-4 text-glow filter drop-shadow-lg">
+                    Hola, soy elspd
+                </h1>
+
+                <!-- Tralalero Meme Badge / Subtitle -->
+                <p class="text-lg sm:text-2xl text-yellow-200 font-bold mb-6 tracking-wide drop-shadow-md">
+                    🎶 ~ <span class="text-green-400 underline decoration-wavy decoration-yellow-400">Tralalero Tralala</span> en el mundo de Minecraft ~ ⛏️
+                </p>
+
+                <!-- Description -->
+                <p class="text-slate-200 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-8 font-medium">
+                    Bienvenido a mi universo cuadriforme. Gamer, creador de contenido y explorador de cubos profesional. ¡Haz clic en el botón superior o interactúa con el tiburón cuadrado en 3D para activar el ritmo legendario!
+                </p>
+
+                <!-- Action Stats / Interactive Badge Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+                    <div class="bg-black/40 p-3 rounded-lg border border-green-500/30">
+                        <div class="text-yellow-400 font-pixel-header text-sm sm:text-base">100%</div>
+                        <div class="text-xs text-slate-300 uppercase font-bold">Pro Gaming</div>
+                    </div>
+                    <div class="bg-black/40 p-3 rounded-lg border border-green-500/30">
+                        <div class="text-green-400 font-pixel-header text-sm sm:text-base">⛏️ REDSTONE</div>
+                        <div class="text-xs text-slate-300 uppercase font-bold">Master</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1 bg-black/40 p-3 rounded-lg border border-green-500/30">
+                        <div class="text-emerald-400 font-pixel-header text-sm sm:text-base">💎 DIAMOND</div>
+                        <div class="text-xs text-slate-300 uppercase font-bold">Player</div>
+                    </div>
+                </div>
+
+                <!-- Social Links Buttons -->
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" class="mc-button px-5 py-3 rounded-lg flex items-center gap-2 font-pixel-header text-xs text-white hover:text-red-400 transition">
+                        <i class="fa-brands fa-youtube text-red-500 text-base"></i> YouTube
+                    </a>
+                    <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer" class="mc-button px-5 py-3 rounded-lg flex items-center gap-2 font-pixel-header text-xs text-white hover:text-purple-400 transition">
+                        <i class="fa-brands fa-twitch text-purple-400 text-base"></i> Twitch
+                    </a>
+                    <a href="https://discord.com" target="_blank" rel="noopener noreferrer" class="mc-button px-5 py-3 rounded-lg flex items-center gap-2 font-pixel-header text-xs text-white hover:text-indigo-400 transition">
+                        <i class="fa-brands fa-discord text-indigo-400 text-base"></i> Discord
+                    </a>
+                    <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" class="mc-button px-5 py-3 rounded-lg flex items-center gap-2 font-pixel-header text-xs text-white hover:text-pink-400 transition">
+                        <i class="fa-brands fa-tiktok text-pink-400 text-base"></i> TikTok
+                    </a>
+                </div>
+            </div>
+        </main>
+
+        <footer class="w-full max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 text-center text-xs text-green-300/80 bg-black/70 px-4 py-3 rounded-lg border border-green-900 backdrop-blur-md pointer-events-auto">
+            <div>
+                © 2026 <span class="font-bold text-yellow-300">elspd</span>. Todos los derechos reservados.
+            </div>
+            <div class="flex items-center gap-2 text-slate-400">
+                <span>Construido con Three.js & Cubos de Diamante 💎</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Notification Toast for Sound Trigger -->
+    <div id="toast" class="fixed top-20 right-5 z-50 transition-all duration-300 transform translate-x-full opacity-0 pointer-events-none">
+        <div class="mc-glass-card border-yellow-400 bg-black/90 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3">
+            <span class="text-2xl animate-bounce">🦈</span>
+            <div>
+                <p class="font-pixel-header text-xs text-yellow-300">¡TRALALERO TRALALA!</p>
+                <p class="text-xs text-slate-200">Canción reproduciéndose en el mundo Minecraft 🔥</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+           AUDIO SYNTHESIZER: TRALALERO TRALALA MELODY
+           ========================================== */
+        let audioCtx = null;
+        let isPlayingAudio = false;
+        let activeNodes = [];
+        let melodyTimeout = null;
+
+        // Custom Web Audio melody synthesizer for the fun "Tralalero Tralala" theme
+        function playTralaleroSong() {
+            if (isPlayingAudio) {
+                stopTralaleroSong();
+                return false;
+            }
+
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                isPlayingAudio = true;
+                showToast();
+
+                // Musical notes frequency map
+                const notes = {
+                    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
+                    'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25,
+                    'D5': 587.33, 'E5': 659.25, 'G5': 783.99
+                };
+
+                // Fun energetic 8-bit style melody pattern for "Tralalero Tralala"
+                const songPattern = [
+                    { note: 'G4', duration: 0.2 },
+                    { note: 'E4', duration: 0.2 },
+                    { note: 'G4', duration: 0.2 },
+                    { note: 'C5', duration: 0.4 }, // Tra-la-le-ro!
+                    { note: 'B4', duration: 0.2 },
+                    { note: 'A4', duration: 0.2 },
+                    { note: 'G4', duration: 0.4 }, // Tra-la-la!
+                    { note: 'A4', duration: 0.2 },
+                    { note: 'F4', duration: 0.2 },
+                    { note: 'A4', duration: 0.2 },
+                    { note: 'D5', duration: 0.4 },
+                    { note: 'C5', duration: 0.2 },
+                    { note: 'B4', duration: 0.2 },
+                    { note: 'C5', duration: 0.6 }
+                ];
+
+                let noteIndex = 0;
+
+                function playNextNote() {
+                    if (!isPlayingAudio) return;
+
+                    const current = songPattern[noteIndex];
+                    const freq = notes[current.note];
+
+                    if (freq) {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+
+                        // Square wave gives that retro chip-tune 8-bit game sound
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                        // Envelopes for crisp retro note hit
+                        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + current.duration);
+
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + current.duration);
+                        activeNodes.push(osc);
+                    }
+
+                    noteIndex = (noteIndex + 1) % songPattern.length;
+                    melodyTimeout = setTimeout(playNextNote, current.duration * 1000 * 0.9);
+                }
+
+                playNextNote();
+                return true;
+
+            } catch (e) {
+                console.error("Web Audio API error:", e);
+                return false;
+            }
+        }
+
+        function stopTralaleroSong() {
+            isPlayingAudio = false;
+            if (melodyTimeout) clearTimeout(melodyTimeout);
+            activeNodes.forEach(node => {
+                try { node.stop(); } catch(e){}
+            });
+            activeNodes = [];
+            document.getElementById('tralalero-text').innerText = "¡TRALALERO TRALALA!";
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 4000);
+        }
+
+        // Hook up sound trigger button
+        const tralaleroBtn = document.getElementById('tralalero-btn');
+        tralaleroBtn.addEventListener('click', () => {
+            const playing = playTralaleroSong();
+            const textEl = document.getElementById('tralalero-text');
+            if (playing) {
+                textEl.innerText = "🎶 REPRODUCIENDO...";
+                // Make the 3D Tralalero shark dance faster
+                if (window.tralaleroCharacter) {
+                    window.tralaleroCharacter.userData.dancing = true;
+                }
+            } else {
+                textEl.innerText = "¡TRALALERO TRALALA!";
+                if (window.tralaleroCharacter) {
+                    window.tralaleroCharacter.userData.dancing = false;
+                }
+            }
+        });
+
+
+        /* ==========================================
+           THREE.JS MINECRAFT 3D WORLD GENERATION
+           ========================================== */
+        let scene, camera, renderer;
+        let characterGroup, cloudsGroup, terrainGroup;
+        let cameraAngle = 0;
+        let isCustomCamera = false;
+
+        function initMinecraftWorld() {
+            const canvas = document.getElementById('webgl-canvas');
+            
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            // Minecraft Sky Blue Color
+            scene.background = new THREE.Color(0x7ec0ee);
+            scene.fog = new THREE.FogExp2(0x7ec0ee, 0.018);
+
+            // 2. Camera Setup
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 8, 18);
+            camera.lookAt(0, 3, 0);
+
+            // 3. Renderer Setup
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // 4. Lighting (Sunlight & Ambient)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfffaed, 0.9);
+            sunLight.position.set(30, 50, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 150;
+            const d = 30;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+            // Helper function to create Minecraft pixelated block textures procedurally
+            function createPixelTexture(baseColorHex, noiseColorHex, size = 16) {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.fillStyle = baseColorHex;
+                ctx.fillRect(0, 0, size, size);
+
+                // Add random noise pixels for Minecraft aesthetic
+                for (let x = 0; x < size; x++) {
+                    for (let y = 0; y < size; y++) {
+                        if (Math.random() > 0.6) {
+                            ctx.fillStyle = noiseColorHex;
+                            ctx.fillRect(x, y, 1, 1);
+                        }
+                    }
+                }
+
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                return texture;
+            }
+
+            // Textures
+            const grassTopTex = createPixelTexture('#5bb327', '#48961d');
+            const grassSideTex = createPixelTexture('#735135', '#523822');
+            const dirtTex = createPixelTexture('#573d26', '#3d2a19');
+            const woodTex = createPixelTexture('#61462b', '#422f1d');
+            const leavesTex = createPixelTexture('#2d7319', '#1e5210');
+            const sharkBlueTex = createPixelTexture('#3b82f6', '#1d4ed8');
+            const sharkBellyTex = createPixelTexture('#e2e8f0', '#cbd5e1');
+
+            // Minecraft Grass Block Materials
+            const grassBlockMaterials = [
+                new THREE.MeshLambertMaterial({ map: grassSideTex }), // Right
+                new THREE.MeshLambertMaterial({ map: grassSideTex }), // Left
+                new THREE.MeshLambertMaterial({ map: grassTopTex }),  // Top
+                new THREE.MeshLambertMaterial({ map: dirtTex }),      // Bottom
+                new THREE.MeshLambertMaterial({ map: grassSideTex }), // Front
+                new THREE.MeshLambertMaterial({ map: grassSideTex })  // Back
+            ];
+
+            const woodMaterial = new THREE.MeshLambertMaterial({ map: woodTex });
+            const leavesMaterial = new THREE.MeshLambertMaterial({ map: leavesTex, transparent: true, opacity: 0.95 });
+
+            // 5. Generate Terrain
+            terrainGroup = new THREE.Group();
+            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+
+            const mapSize = 26;
+            for (let x = -mapSize / 2; x < mapSize / 2; x++) {
+                for (let z = -mapSize / 2; z < mapSize / 2; x++) {
+                    // Slight height variation using sine waves
+                    const heightVal = Math.floor(Math.sin(x * 0.3) * Math.cos(z * 0.3) * 1.5);
+                    
+                    // Top Grass Block
+                    const grassCube = new THREE.Mesh(boxGeo, grassBlockMaterials);
+                    grassCube.position.set(x, heightVal, z);
+                    grassCube.receiveShadow = true;
+                    grassCube.castShadow = true;
+                    terrainGroup.add(grassCube);
+
+                    // Dirt layer underneath
+                    for (let d = 1; d <= 2; d++) {
+                        const dirtCube = new THREE.Mesh(boxGeo, new THREE.MeshLambertMaterial({ map: dirtTex }));
+                        dirtCube.position.set(x, heightVal - d, z);
+                        terrainGroup.add(dirtCube);
+                    }
+                }
+            }
+            scene.add(terrainGroup);
+
+            // Helper to build a blocky Minecraft tree
+            function createTree(posX, posZ) {
+                const treeGroup = new THREE.Group();
+                const trunkHeight = 4 + Math.floor(Math.random() * 2);
+
+                // Trunk
+                for (let i = 0; i < trunkHeight; i++) {
+                    const trunk = new THREE.Mesh(boxGeo, woodMaterial);
+                    trunk.position.set(0, i, 0);
+                    trunk.castShadow = true;
+                    trunk.receiveShadow = true;
+                    treeGroup.add(trunk);
+                }
+
+                // Leaves
+                for (let lx = -2; lx <= 2; lx++) {
+                    for (let ly = trunkHeight - 1; ly <= trunkHeight + 1; ly++) {
+                        for (let lz = -2; lz <= 2; lz++) {
+                            if (Math.abs(lx) === 2 && Math.abs(lz) === 2 && Math.random() > 0.4) continue;
+                            const leaf = new THREE.Mesh(boxGeo, leavesMaterial);
+                            leaf.position.set(lx, ly, lz);
+                            leaf.castShadow = true;
+                            leaf.receiveShadow = true;
+                            treeGroup.add(leaf);
+                        }
+                    }
+                }
+
+                treeGroup.position.set(posX, 0, posZ);
+                return treeGroup;
+            }
+
+            // Place Trees around the island
+            scene.add(createTree(-7, -6));
+            scene.add(createTree(8, -5));
+            scene.add(createTree(-8, 5));
+            scene.add(createTree(7, 6));
+
+            // Minecraft Sun (Yellow Box in Sky)
+            const sunGeo = new THREE.BoxGeometry(4, 4, 1);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff36a });
+            const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+            sunMesh.position.set(25, 35, -40);
+            scene.add(sunMesh);
+
+            // Floating Clouds
+            cloudsGroup = new THREE.Group();
+            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+            
+            for (let c = 0; c < 12; c++) {
+                const cloudPartGroup = new THREE.Group();
+                const cloudWidth = 3 + Math.floor(Math.random() * 5);
+                const cloudLength = 3 + Math.floor(Math.random() * 5);
+
+                for (let cx = 0; cx < cloudWidth; cx++) {
+                    for (let cz = 0; cz < cloudLength; cz++) {
+                        const cloudBlock = new THREE.Mesh(boxGeo, cloudMat);
+                        cloudBlock.position.set(cx, 0, cz);
+                        cloudPartGroup.add(cloudBlock);
+                    }
+                }
+                
+                cloudPartGroup.position.set(
+                    (Math.random() - 0.5) * 80,
+                    18 + Math.random() * 6,
+                    (Math.random() - 0.5) * 80
+                );
+                cloudsGroup.add(cloudPartGroup);
+            }
+            scene.add(cloudsGroup);
+
+
+            /* ==========================================
+               3D CHARACTER: 'TRALALERO TRALALA' CUTE SHARK
+               ========================================== */
+            characterGroup = new THREE.Group();
+
+            const sharkMat = new THREE.MeshLambertMaterial({ map: sharkBlueTex });
+            const bellyMat = new THREE.MeshLambertMaterial({ map: sharkBellyTex });
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const blackMat = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            const redMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+
+            // Shark Body (Blocky)
+            const bodyGeo = new THREE.BoxGeometry(2.2, 1.8, 3.2);
+            const sharkBody = new THREE.Mesh(bodyGeo, sharkMat);
+            sharkBody.position.y = 1;
+            sharkBody.castShadow = true;
+            characterGroup.add(sharkBody);
+
+            // Belly
+            const bellyGeo = new THREE.BoxGeometry(2.0, 0.4, 2.8);
+            const belly = new THREE.Mesh(bellyGeo, bellyMat);
+            belly.position.set(0, 0.2, 0);
+            characterGroup.add(belly);
+
+            // Shark Top Fin
+            const finGeo = new THREE.BoxGeometry(0.4, 1.2, 1.0);
+            const fin = new THREE.Mesh(finGeo, sharkMat);
+            fin.position.set(0, 2.3, -0.2);
+            fin.rotation.x = -0.3;
+            fin.castShadow = true;
+            characterGroup.add(fin);
+
+            // Tail
+            const tailGroup = new THREE.Group();
+            const tailGeo = new THREE.BoxGeometry(0.5, 1.4, 1.2);
+            const tail = new THREE.Mesh(tailGeo, sharkMat);
+            tail.position.set(0, 1, -2.2);
+            tail.castShadow = true;
+            tailGroup.add(tail);
+            characterGroup.add(tailGroup);
+
+            // Eyes (Pixelated Minecraft Eyes)
+            const eyeGeo = new THREE.BoxGeometry(0.3, 0.3, 0.1);
+            
+            const leftEyeWhite = new THREE.Mesh(eyeGeo, whiteMat);
+            leftEyeWhite.position.set(-1.12, 1.2, 1.2);
+            characterGroup.add(leftEyeWhite);
+
+            const leftEyePupil = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.12), blackMat);
+            leftEyePupil.position.set(-1.13, 1.2, 1.25);
+            characterGroup.add(leftEyePupil);
+
+            const rightEyeWhite = new THREE.Mesh(eyeGeo, whiteMat);
+            rightEyeWhite.position.set(1.12, 1.2, 1.2);
+            characterGroup.add(rightEyeWhite);
+
+            const rightEyePupil = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.12), blackMat);
+            rightEyePupil.position.set(1.13, 1.2, 1.25);
+            characterGroup.add(rightEyePupil);
+
+            // Funny Cute Mouth / Teeth
+            const mouthGeo = new THREE.BoxGeometry(1.2, 0.25, 0.1);
+            const mouth = new THREE.Mesh(mouthGeo, redMat);
+            mouth.position.set(0, 0.7, 1.61);
+            characterGroup.add(mouth);
+
+            // Singing Sign / Microphone or Diamond held in hand
+            const diamondGeo = new THREE.OctahedronGeometry(0.35);
+            const diamondMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
+            const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+            diamond.position.set(1.3, 1.1, 0.8);
+            characterGroup.add(diamond);
+
+            // Position character in center foreground
+            characterGroup.position.set(0, 2.5, 3);
+            characterGroup.userData = { dancing: false };
+            scene.add(characterGroup);
+
+            window.tralaleroCharacter = characterGroup;
+
+            // Raycaster for clicking on 3D Character
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            window.addEventListener('click', (event) => {
+                // Ignore UI clicks
+                if (event.target.tagName === 'BUTTON' || event.target.closest('a') || event.target.closest('main')) return;
+
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(characterGroup.children, true);
+
+                if (intersects.length > 0) {
+                    // Clicked on Tralalero Shark!
+                    tralaleroBtn.click();
+                    
+                    // Bounce animation
+                    characterGroup.position.y += 1.5;
+                }
+            });
+
+            // Camera toggle view
+            const cameraBtn = document.getElementById('camera-btn');
+            cameraBtn.addEventListener('click', () => {
+                isCustomCamera = !isCustomCamera;
+            });
+
+            // Window Resize Listener
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /* ==========================================
+           ANIMATION LOOP
+           ========================================== */
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // 1. Animate Clouds slowly
+            if (cloudsGroup) {
+                cloudsGroup.children.forEach((cloud, idx) => {
+                    cloud.position.x += 0.02 * (idx % 2 === 0 ? 1 : 0.7);
+                    if (cloud.position.x > 40) cloud.position.x = -40;
+                });
+            }
+
+            // 2. Animate Tralalero Shark Character
+            if (characterGroup) {
+                const isDancing = characterGroup.userData.dancing;
+                const speed = isDancing ? 8 : 2.5;
+                const floatAmp = isDancing ? 0.6 : 0.25;
+
+                // Bobbing up & down
+                characterGroup.position.y = 2.5 + Math.sin(elapsedTime * speed) * floatAmp;
+                
+                // Swaying side to side (dancing)
+                characterGroup.rotation.y = Math.sin(elapsedTime * (speed * 0.5)) * (isDancing ? 0.5 : 0.2);
+                characterGroup.rotation.z = Math.cos(elapsedTime * speed) * (isDancing ? 0.15 : 0.05);
+            }
+
+            // 3. Dynamic Camera Orbit Motion
+            if (!isCustomCamera) {
+                cameraAngle += 0.0025;
+                camera.position.x = Math.sin(cameraAngle) * 18;
+                camera.position.z = Math.cos(cameraAngle) * 18;
+                camera.position.y = 7 + Math.sin(elapsedTime * 0.5) * 1.5;
+                camera.lookAt(0, 2.5, 0);
+            } else {
+                // Front close view
+                camera.position.set(0, 4, 10);
+                camera.lookAt(0, 2.8, 0);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Initialize on window load
+        window.onload = function() {
+            initMinecraftWorld();
+            animate();
+        };
+    </script>
 </body>
 </html>
